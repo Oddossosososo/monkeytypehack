@@ -13,7 +13,7 @@ let cfg={...defaults,...JSON.parse(localStorage.getItem("autotyper-config")||"{}
 const $=id=>document.getElementById(id);
 function save(){localStorage.setItem("autotyper-config",JSON.stringify(cfg))}
 function stop(){running=false;clearTimeout(timer);timer=null;type.nextTime=0;if($("status"))$("status").textContent="Ready"}
-function start(){if(!$("#typingTest"))return;running=true;if($("status"))$("status").textContent="Typing...";type.nextTime=performance.now();type()}
+function start(){if(!document.querySelector("#typingTest")||!$("wordsInput"))return;running=true;if($("status"))$("status").textContent="Typing...";type.nextTime=performance.now();type()}
 function toggle(){running?stop():start()}
 document.addEventListener("keydown",e=>{const el=e.target,editing=el.tagName==="INPUT"||el.tagName==="TEXTAREA"||el.isContentEditable||el.closest("#autotyper");if(e.code===KEY&&editing){e.preventDefault();e.stopImmediatePropagation();return}if(e.code===KEY&&!e.repeat){e.preventDefault();e.stopImmediatePropagation();toggle()}},true);
 function nextChar(){const word=document.querySelector(".word.active");if(!word)return null;for(const letter of word.children)if(!letter.className)return letter.textContent;return" "}
