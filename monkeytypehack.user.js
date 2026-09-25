@@ -25,7 +25,7 @@ function stop(){running=false;clearTimeout(timer);timer=0;state={word:"",pos:0,n
    then advance through that exact word one character at a time. */
 function nextWord(){
  const w=document.querySelector(".word.active");
- return w?[...w.children].map(x=>x.textContent).join(""):"";
+ return w?[...w.querySelectorAll("letter")].map(x=>x.textContent).join(""):"";
 }
 function nextChar(){
  const w=document.querySelector(".word.active");
