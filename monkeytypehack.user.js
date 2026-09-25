@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MonkeyType AutoTyper
 // @namespace    Oddossosososo
-// @version      5.0
+// @version      5.1
 // @match        *://monkeytype.com/*
 // @run-at       document-idle
 // @grant        none
@@ -9,74 +9,73 @@
 
 (()=>{"use strict";
 
-const KEY="ArrowRight";
 const defaults={wpm:50,accuracy:100};
-let cfg={...defaults};
-try{Object.assign(cfg,JSON.parse(localStorage.autotyperConfig||"{}"))}catch{}
-let running=false,timer=0,word="",pos=0,next=0,audio=null;
+let cfg={...defaults},running=false,timer=0,audio=null;
+let state={word:"",pos:0,nextTime:0};
 
+try{Object.assign(cfg,JSON.parse(localStorage.autotyperConfig||"{}"))}catch{}
 const $=id=>document.getElementById(id);
-const input=()=>$("wordsInput");
 
 function save(){localStorage.autotyperConfig=JSON.stringify(cfg)}
-function status(s){const x=$("atStatus");if(x)x.textContent=s}
-function stop(){running=false;clearTimeout(timer);timer=0;word="";pos=0;next=0;status("Ready")}
+function status(x){const e=$("atStatus");if(e)e.textContent=x}
+function stop(){running=false;clearTimeout(timer);timer=0;state={word:"",pos:0,nextTime:0};status("Ready")}
 
-function activeWord(){
+/* ORIGINAL TARGET LOGIC:
+   Read the whole active Monkeytype word from its character elements,
+   then advance through that exact word one character at a time. */
+function nextWord(){
  const w=document.querySelector(".word.active");
  return w?[...w.children].map(x=>x.textContent).join(""):"";
 }
-
 function nextChar(){
- const w=activeWord();
+ const w=document.querySelector(".word.active");
+ const word=nextWord();
  if(!w)return null;
- if(w!==word){word=w;pos=0}
- return pos<w.length?w[pos++]:" ";
+ if(state.word!==word){state.word=word;state.pos=0}
+ return state.pos<word.length?word[state.pos++]:" ";
 }
 
-function sound(){
+function clickSound(){
  try{
   audio??=new AudioContext();
   if(audio.state==="suspended")audio.resume();
   const o=audio.createOscillator(),g=audio.createGain();
-  o.frequency.value=700;g.gain.value=.025;o.connect(g).connect(audio.destination);
-  o.start();o.stop(audio.currentTime+.018);
+  o.type="square";o.frequency.value=700;
+  g.gain.setValueAtTime(.025,audio.currentTime);
+  g.gain.exponentialRampToValueAtTime(.001,audio.currentTime+.02);
+  o.connect(g).connect(audio.destination);o.start();o.stop(audio.currentTime+.02);
  }catch{}
 }
 
-function press(k){
- const el=input();
+function press(key){
+ const el=$("wordsInput");
  if(!el)return false;
- sound();
- const code=k===" "?"Space":/^[a-z]$/i.test(k)?"Key"+k.toUpperCase():"";
- const opt={key:k,code,bubbles:true,cancelable:true};
- el.dispatchEvent(new KeyboardEvent("keydown",opt));
- el.dispatchEvent(new KeyboardEvent("keyup",opt));
+ clickSound();
+ const code=key===" "?"Space":/^[a-z]$/i.test(key)?"Key"+key.toUpperCase():"";
+ const ev={key,code,bubbles:true,cancelable:true};
+ el.dispatchEvent(new KeyboardEvent("keydown",ev));
+ el.dispatchEvent(new KeyboardEvent("keyup",ev));
  return true;
 }
 
 function type(){
  if(!running)return;
  const wpm=Math.max(Number(cfg.wpm)||1,.000001);
- const gap=12000/wpm;
- const now=performance.now();
- let count=0;
- while(running&&next<=now&&count++<1000){
+ const gap=12000/wpm,now=performance.now();
+ let n=0;
+ while(running&&state.nextTime<=now&&n++<1000){
   const ch=nextChar();
   if(ch===null){stop();return}
-  press(ch);
-  next+=gap;
+  if(!press(ch)){stop();return}
+  state.nextTime+=gap;
  }
- timer=setTimeout(type,Math.max(1,next-performance.now()));
+ timer=setTimeout(type,Math.max(1,state.nextTime-performance.now()));
 }
 
 function start(){
- if(!input()){status("Open a typing test first");return}
- stop();
- running=true;
- status("Typing...");
- next=performance.now();
- type();
+ if(!$("wordsInput")){status("Open a typing test first");return}
+ stop();running=true;status("Typing...");
+ state.nextTime=performance.now();type();
 }
 
 function makeGUI(){
@@ -93,28 +92,23 @@ function makeGUI(){
  g.style.cssText="position:fixed;right:15px;bottom:15px;z-index:999999;width:180px;padding:12px;background:#111;color:#fff;border:1px solid #444;border-radius:10px;font:12px Arial;box-shadow:0 5px 25px #000";
  document.body.appendChild(g);
  const s=document.createElement("style");
- s.textContent="#autotyper label{display:block;margin:7px 0}#autotyper input{width:75px;box-sizing:border-box;background:#222;color:#fff;border:1px solid #555;border-radius:4px;padding:4px}#autotyper button{margin:4px 3px 0 0;padding:5px 8px;background:#333;color:#fff;border:1px solid #555;border-radius:5px}#atStatus{display:block;margin-top:8px;color:#aaa}";
+ s.textContent="#autotyper label{display:block;margin:7px 0}#autotyper input{width:75px;box-sizing:border-box;background:#222;color:#fff;border:1px solid #555;border-radius:4px;padding:4px}#autotyper button{margin:4px 3px 0 0;padding:5px 8px;background:#333;color:#fff;border:1px solid #555;border-radius:5px;color:#fff}#atStatus{display:block;margin-top:8px;color:#aaa}";
  document.head.appendChild(s);
- $("atWpm").value=cfg.wpm;
- $("atAccuracy").value=cfg.accuracy;
+ $("atWpm").value=cfg.wpm;$("atAccuracy").value=cfg.accuracy;
  $("atWpm").oninput=e=>{if(e.target.value==="")return;const n=Number(e.target.value);if(Number.isFinite(n)&&n>0){cfg.wpm=n;save()}};
  $("atAccuracy").oninput=e=>{let n=Number(e.target.value);if(Number.isFinite(n)){cfg.accuracy=Math.max(0,Math.min(100,n));save()}};
- $("atStart").onclick=start;
- $("atStop").onclick=stop;
+ $("atStart").onclick=start;$("atStop").onclick=stop;
  g.addEventListener("keydown",e=>e.stopPropagation(),true);
 }
 
 document.addEventListener("keydown",e=>{
  const t=e.target;
  const editing=t&&(t.tagName==="INPUT"||t.tagName==="TEXTAREA"||t.isContentEditable);
- if(e.code===KEY&&editing)return;
- if(e.code===KEY&&!e.repeat){e.preventDefault();start()}
+ if(e.code==="ArrowRight"&&editing)return;
+ if(e.code==="ArrowRight"&&!e.repeat){e.preventDefault();start()}
 },true);
 
-function boot(){
- if(!document.body)return setTimeout(boot,250);
- makeGUI();
-}
+function boot(){if(!document.body)return setTimeout(boot,250);makeGUI()}
 boot();
 
 })();
