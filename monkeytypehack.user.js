@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MonkeyType AutoTyper
 // @namespace    Oddossosososo
-// @version      5.1
+// @version      5.2
 // @match        *://monkeytype.com/*
 // @run-at       document-idle
 // @grant        none
@@ -51,10 +51,9 @@ function press(key){
  const el=$("wordsInput");
  if(!el)return false;
  clickSound();
- const code=key===" "?"Space":/^[a-z]$/i.test(key)?"Key"+key.toUpperCase():"";
- const ev={key,code,bubbles:true,cancelable:true};
- el.dispatchEvent(new KeyboardEvent("keydown",ev));
- el.dispatchEvent(new KeyboardEvent("keyup",ev));
+ const p=Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,"value").set;
+ p.call(el,el.value+key);
+ el.dispatchEvent(new InputEvent("input",{bubbles:true,inputType:"insertText",data:key}));
  return true;
 }
 
