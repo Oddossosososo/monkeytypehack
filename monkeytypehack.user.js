@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MonkeyType AutoTyper
 // @namespace    Oddossosososo
-// @version      5.3
+// @version      5.4
 // @match        *://monkeytype.com/*
 // @run-at       document-idle
 // @grant        none
@@ -79,7 +79,7 @@ function start(){
  if(!$("wordsInput")){status("Open a typing test first");return}
  stop();running=true;status("Typing...");
  state.startTime=performance.now();
- state.nextTime=state.startTime;
+ // The first character also consumes one character interval.\n state.nextTime=state.startTime+12000/Math.max(Number(cfg.wpm)||1,.000001);
  state.typed=0;
  type();
 }
