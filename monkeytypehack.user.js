@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MonkeyType AutoTyper
 // @namespace    Oddossosososo
-// @version      5.2
+// @version      5.3
 // @match        *://monkeytype.com/*
 // @run-at       document-idle
 // @grant        none
@@ -11,18 +11,15 @@
 
 const defaults={wpm:50,accuracy:100};
 let cfg={...defaults},running=false,timer=0,audio=null;
-let state={word:"",pos:0,nextTime:0};
+let state={word:"",pos:0,nextTime:0,startTime:0,typed:0};
 
 try{Object.assign(cfg,JSON.parse(localStorage.autotyperConfig||"{}"))}catch{}
 const $=id=>document.getElementById(id);
 
 function save(){localStorage.autotyperConfig=JSON.stringify(cfg)}
 function status(x){const e=$("atStatus");if(e)e.textContent=x}
-function stop(){running=false;clearTimeout(timer);timer=0;state={word:"",pos:0,nextTime:0};status("Ready")}
+function stop(){running=false;clearTimeout(timer);timer=0;state={word:"",pos:0,nextTime:0,startTime:0,typed:0};status("Ready")}
 
-/* ORIGINAL TARGET LOGIC:
-   Read the whole active Monkeytype word from its character elements,
-   then advance through that exact word one character at a time. */
 function nextWord(){
  const w=document.querySelector(".word.active");
  return w?[...w.querySelectorAll("letter")].map(x=>x.textContent).join(""):"";
@@ -60,21 +57,31 @@ function press(key){
 function type(){
  if(!running)return;
  const wpm=Math.max(Number(cfg.wpm)||1,.000001);
- const gap=12000/wpm,now=performance.now();
+ const gap=12000/wpm;
+ const now=performance.now();
  let n=0;
+
  while(running&&state.nextTime<=now&&n++<1000){
   const ch=nextChar();
   if(ch===null){stop();return}
   if(!press(ch)){stop();return}
-  state.nextTime+=gap;
+
+  state.typed++;
+  // Absolute target timeline: 5 characters = 1 word.
+  // This prevents timer/frame delays from accumulating.
+  state.nextTime=state.startTime+state.typed*gap;
  }
+
  timer=setTimeout(type,Math.max(1,state.nextTime-performance.now()));
 }
 
 function start(){
  if(!$("wordsInput")){status("Open a typing test first");return}
  stop();running=true;status("Typing...");
- state.nextTime=performance.now();type();
+ state.startTime=performance.now();
+ state.nextTime=state.startTime;
+ state.typed=0;
+ type();
 }
 
 function makeGUI(){
