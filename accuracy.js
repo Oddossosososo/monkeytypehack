@@ -1,20 +1,4 @@
-export const cfg = globalThis.__AutoTyperConfig ??= (() => {
-  try { return Object.assign({accuracy:100}, JSON.parse(localStorage.autotyperConfig || "{}")); }
-  catch { return {accuracy:100}; }
-})();
-export const save = () => localStorage.autotyperConfig = JSON.stringify(cfg);
-export let word = "", pos = 0;
-export function reset(){word="";pos=0}
-export function nextChar(){
-  const el=document.querySelector(".word.active"); if(!el)return null;
-  const text=[...el.querySelectorAll("letter")].map(x=>x.textContent).join("");
-  if(word!==text){word=text;pos=0}
-  return pos<text.length?text[pos++]:" ";
-}
-export function press(key){
-  const el=document.getElementById("wordsInput"); if(!el)return false;
-  const set=Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,"value").set;
-  set.call(el,el.value+key);
-  el.dispatchEvent(new InputEvent("input",{bubbles:true,inputType:"insertText",data:key}));
-  return true;
-}
+(()=>{"use strict";
+const cfg=globalThis.__AutoTyperConfig??={wpm:50,accuracy:100};
+try{Object.assign(cfg,JSON.parse(localStorage.autotyperConfig||"{}"))}catch{}
+globalThis.__AutoTyperAccuracy={cfg,save:()=>localStorage.autotyperConfig=JSON.stringify(cfg),word:"",pos:0,reset(){this.word="";this.pos=0},nextChar(){const e=document.querySelector(".word.active");if(!e)return null;const t=[...e.querySelectorAll("letter")].map(x=>x.textContent).join("");if(this.word!==t){this.word=t;this.pos=0}return this.pos<t.length?t[this.pos++]:" "},press(k){const e=document.getElementById("wordsInput");if(!e)return false;const s=Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,"value").set;s.call(e,e.value+k);e.dispatchEvent(new InputEvent("input",{bubbles:true,inputType:"insertText",data:k}));return true}}})();
